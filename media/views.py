@@ -44,9 +44,10 @@ class ImageDetailView(APIView):
         serializer = ImageSerializer(image)
         img = Img.open(image.file_encode)
         img = asarray(img)
-        print(img.shape)
         img_details = {
-            'image':img,
+            'title':serializer.data['title'],
+            'description':serializer.data['description'],
+            'location':serializer.data['file_encode'],
             'height':img.shape[0],
             'width':img.shape[1],
             'channels':img.shape[2]
@@ -76,7 +77,18 @@ class PDFDetailView(APIView):
             except PDFS.DoesNotExist:
                 return Response(status=404)
             serializer = PDFSerializer(pdf)
-            return Response(serializer.data)
+            # count the number of pages in the pdf
+            pages = convert_from_path(pdf.file_encode.path)
+            width, height = pages[0].size
+            pdf_details = {
+                'title':serializer.data['title'],
+                'description':serializer.data['description'],
+                'location':serializer.data['file_encode'],
+                'pages':len(pages),
+                'height':height,
+                'width':width
+            }
+            return Response(pdf_details)
         
         def delete(self,request,pk):
             print(pk)
@@ -99,13 +111,19 @@ class RotateImage(APIView):
                 return Response(status=404)
             # get the image from the path and rotate it
             try:
-                image = Img.open(image.file_encode)
-                image = image.rotate(angle)
+                image_PIL = Img.open(image.file_encode)
+                image_PIL = image_PIL.rotate(angle)
             except:
                 return Response(status=404)
-            
-            print(image)
-            return HttpResponse(image,content_type="image/png")
+            # save the image
+            name =  image.file_encode.path.split('images')[0] + "rotated_image/" + \
+                    image.file_encode.path.split('images')[1].split('.')[0] + datetime.datetime.now().strftime("%H%M%S%MS") \
+                    + str(0) + ".PNG"
+            image_PIL.save(name)
+            url = {
+                'url':name
+            }
+            return Response(status=200,data=url)
 
      
 class PDFtoImageView(APIView):
@@ -124,7 +142,7 @@ class PDFtoImageView(APIView):
             name =  pdf.file_encode.path.split('pdfs')[0] + "converted_pdf/" + \
                     pdf.file_encode.path.split('pdfs')[1].split('.')[0] + datetime.datetime.now().strftime("%H%M%S%MS") \
                     + str(i) + ".jpg"
-            images[i].save(name + '.jpg')
+            images[i].save(name)
             urls.append(name)
 
         return Response(urls)

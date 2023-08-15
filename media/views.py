@@ -1,6 +1,5 @@
 import datetime
 from PIL import Image as Img
-from django.http import HttpResponse
 from .serializers import ImageSerializer,PDFSerializer
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -133,7 +132,7 @@ class PDFtoImageView(APIView):
         try:
             pdf = PDFS.objects.get(pk=id)
         except PDFS.DoesNotExist:
-            return Response(status=404)
+            return Response(status=404,data={'error':'pdf not found'})
         # convert the pdf to image and return the image
         images = convert_from_path(pdf.file_encode.path)
         urls = []
